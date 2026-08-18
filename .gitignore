@@ -1,0 +1,46 @@
+# ── Segredos e configuração local ─────────────────────────────
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets/
+*.local
+
+# Chaves e certificados (JWT, criptografia das licenças)
+*.pem
+*.key
+
+# ── Arquivos enviados pelos usuários (notas fiscais digitalizadas) ──
+uploads/
+media/
+
+# ── Backend .NET ──────────────────────────────────────────────
+bin/
+obj/
+*.user
+# banco local de teste, se houver
+*.db
+*.db-shm
+*.db-wal
+
+# ── Frontend React / Node ─────────────────────────────────────
+node_modules/
+dist/
+npm-debug.log*
+yarn-error.log*
+
+# ── Claude Code ───────────────────────────────────────────────
+# Mantidos no repositório (compartilhados): CLAUDE.md e .claude/settings.json
+# Ignorado (pessoal): configurações locais suas
+.claude/settings.local.json
+
+# ── Sistema operacional ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editores / IDEs ───────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.vs/
