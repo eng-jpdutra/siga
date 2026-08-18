@@ -17,6 +17,21 @@ namespace SIGA.Api.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
 
+            modelBuilder.Entity("PapelUsuario", b =>
+                {
+                    b.Property<int>("PapeisId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UsuariosId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("PapeisId", "UsuariosId");
+
+                    b.HasIndex("UsuariosId");
+
+                    b.ToTable("usuario_papel", (string)null);
+                });
+
             modelBuilder.Entity("SIGA.Api.Domain.Equipamento", b =>
                 {
                     b.Property<int>("Id")
@@ -81,6 +96,12 @@ namespace SIGA.Api.Data.Migrations
 
                     b.HasIndex("LocalId");
 
+                    b.HasIndex("Marca");
+
+                    b.HasIndex("Modelo");
+
+                    b.HasIndex("NotaFiscalId");
+
                     b.HasIndex("NumeroSerie")
                         .IsUnique()
                         .HasFilter("NumeroSerie IS NOT NULL");
@@ -137,6 +158,43 @@ namespace SIGA.Api.Data.Migrations
                     b.ToTable("historico", (string)null);
                 });
 
+            modelBuilder.Entity("SIGA.Api.Domain.Licenca", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ChaveCriptografada")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EquipamentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("NotaFiscalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Produto")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tipo")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipamentoId");
+
+                    b.HasIndex("NotaFiscalId");
+
+                    b.ToTable("licenca", (string)null);
+                });
+
             modelBuilder.Entity("SIGA.Api.Domain.Local", b =>
                 {
                     b.Property<int>("Id")
@@ -158,6 +216,59 @@ namespace SIGA.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("local", (string)null);
+                });
+
+            modelBuilder.Entity("SIGA.Api.Domain.NotaFiscal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ArquivoPath")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("DataEmissao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fornecedor")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Numero")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Valor")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("nota_fiscal", (string)null);
+                });
+
+            modelBuilder.Entity("SIGA.Api.Domain.Papel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome")
+                        .IsUnique();
+
+                    b.ToTable("papel", (string)null);
                 });
 
             modelBuilder.Entity("SIGA.Api.Domain.Responsavel", b =>
@@ -195,6 +306,46 @@ namespace SIGA.Api.Data.Migrations
                     b.HasIndex("LocalId");
 
                     b.ToTable("responsavel", (string)null);
+                });
+
+            modelBuilder.Entity("SIGA.Api.Domain.Usuario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FotoPath")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeUsuario")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ResponsavelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NomeUsuario")
+                        .IsUnique();
+
+                    b.HasIndex("ResponsavelId");
+
+                    b.ToTable("usuario", (string)null);
                 });
 
             modelBuilder.Entity("SIGA.Api.Domain.Computador", b =>
@@ -277,11 +428,31 @@ namespace SIGA.Api.Data.Migrations
                     b.ToTable("impressora", (string)null);
                 });
 
+            modelBuilder.Entity("PapelUsuario", b =>
+                {
+                    b.HasOne("SIGA.Api.Domain.Papel", null)
+                        .WithMany()
+                        .HasForeignKey("PapeisId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SIGA.Api.Domain.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuariosId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SIGA.Api.Domain.Equipamento", b =>
                 {
                     b.HasOne("SIGA.Api.Domain.Local", "Local")
                         .WithMany("Equipamentos")
                         .HasForeignKey("LocalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SIGA.Api.Domain.NotaFiscal", "NotaFiscal")
+                        .WithMany()
+                        .HasForeignKey("NotaFiscalId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SIGA.Api.Domain.Responsavel", "Responsavel")
@@ -290,6 +461,8 @@ namespace SIGA.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Local");
+
+                    b.Navigation("NotaFiscal");
 
                     b.Navigation("Responsavel");
                 });
@@ -305,6 +478,24 @@ namespace SIGA.Api.Data.Migrations
                     b.Navigation("Equipamento");
                 });
 
+            modelBuilder.Entity("SIGA.Api.Domain.Licenca", b =>
+                {
+                    b.HasOne("SIGA.Api.Domain.Equipamento", "Equipamento")
+                        .WithMany()
+                        .HasForeignKey("EquipamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SIGA.Api.Domain.NotaFiscal", "NotaFiscal")
+                        .WithMany()
+                        .HasForeignKey("NotaFiscalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Equipamento");
+
+                    b.Navigation("NotaFiscal");
+                });
+
             modelBuilder.Entity("SIGA.Api.Domain.Responsavel", b =>
                 {
                     b.HasOne("SIGA.Api.Domain.Local", "Local")
@@ -313,6 +504,16 @@ namespace SIGA.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Local");
+                });
+
+            modelBuilder.Entity("SIGA.Api.Domain.Usuario", b =>
+                {
+                    b.HasOne("SIGA.Api.Domain.Responsavel", "Responsavel")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Responsavel");
                 });
 
             modelBuilder.Entity("SIGA.Api.Domain.Computador", b =>

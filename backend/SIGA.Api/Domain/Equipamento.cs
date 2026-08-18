@@ -2,8 +2,6 @@ namespace SIGA.Api.Domain;
 
 // Tabela base da herança TPT (equipamento / computador / impressora /
 // dispositivo_rede) — ver "Modelo de dados — inventário" no CLAUDE.md.
-// `NotaFiscalId` ainda é só a FK (sem entidade nem navegação): nota_fiscal
-// entra numa etapa futura.
 public class Equipamento
 {
     public int Id { get; set; }
@@ -27,6 +25,8 @@ public class Equipamento
     public Responsavel? Responsavel { get; set; }
 
     public int? NotaFiscalId { get; set; }
+
+    public NotaFiscal? NotaFiscal { get; set; }
 
     // Soft delete: "excluir" um equipamento é gravar Status = Baixado.
     public StatusEquipamento Status { get; set; } = StatusEquipamento.Ativo;

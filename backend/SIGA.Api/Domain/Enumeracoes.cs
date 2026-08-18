@@ -68,3 +68,10 @@ public enum TipoHistorico
     TrocaResponsavel,
     Outro,
 }
+
+public enum TipoLicenca
+{
+    OEM,
+    Volume,
+    Retail,
+}

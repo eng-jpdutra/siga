@@ -1,40 +1,170 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
+import Drawer from "@mui/material/Drawer";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import Stack from "@mui/material/Stack";
+import Avatar from "@mui/material/Avatar";
+import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
+import ComputerOutlinedIcon from "@mui/icons-material/ComputerOutlined";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import KeyOutlinedIcon from "@mui/icons-material/KeyOutlined";
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
+import { useAuth } from "../auth/AuthContext";
+import { useFotoPerfil } from "../hooks/useFotoPerfil";
+import { useThemeMode } from "../theme/ThemeModeProvider";
 
-// Layout base da aplicação. As cores vêm sempre de `theme.palette` (nunca de
-// hexadecimais soltos) — ver identidade visual em src/theme/theme.js.
-// Por enquanto só uma barra de topo fixa; menu lateral e navegação por
-// módulo entram quando as telas existirem.
+const LARGURA_MENU = 240;
+const ALTURA_CABECALHO = 88;
+
+// MUI aplica a altura padrão do Toolbar via breakpoint (maior especificidade
+// que um "minHeight" simples) — por isso o override entra também dentro do
+// media query, senão é ignorado acima de 600px de largura.
+const alturaCabecalhoSx = {
+  minHeight: ALTURA_CABECALHO,
+  "@media (min-width:600px)": { minHeight: ALTURA_CABECALHO },
+};
+
+const itensDeNavegacao = [
+  { rotulo: "Início", caminho: "/", icone: HomeOutlinedIcon },
+  { rotulo: "Equipamentos", caminho: "/equipamentos", icone: ComputerOutlinedIcon },
+  { rotulo: "Locais", caminho: "/locais", icone: PlaceOutlinedIcon },
+  { rotulo: "Responsáveis", caminho: "/responsaveis", icone: BadgeOutlinedIcon },
+  { rotulo: "Notas fiscais", caminho: "/notas-fiscais", icone: ReceiptLongOutlinedIcon },
+  { rotulo: "Licenças", caminho: "/licencas", icone: KeyOutlinedIcon },
+  // Todo mundo acessa — a própria tela decide o que mostrar (perfil próprio
+  // pra todos, gestão de outras contas só pra quem tem papel Administrador).
+  { rotulo: "Usuários", caminho: "/usuarios", icone: GroupOutlinedIcon },
+];
+
+// Layout base da aplicação: cabeçalho fixo + menu lateral fixo (sem colapsar).
+// As cores vêm sempre de `theme.palette` (nunca de hexadecimais soltos) —
+// ver identidade visual em src/theme/theme.js. Trocar senha/foto ficam
+// dentro da tela de Usuários ("Meu perfil"); sair fica no cabeçalho mesmo.
 export default function AppLayout() {
+  const { usuario, sair } = useAuth();
+  const navigate = useNavigate();
+  const { data: fotoUrl } = useFotoPerfil();
+  const { modo, alternarModo } = useThemeMode();
+
+  function handleSair() {
+    sair();
+    navigate("/login", { replace: true });
+  }
+
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        color: "text.primary",
-      }}
-    >
-      <AppBar position="static" elevation={0}>
-        <Toolbar sx={{ gap: 2 }}>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            SIGA — sistema integrado de gestão de ativos
-          </Typography>
-          {/* Exemplo de destaque em âmbar para o item de navegação ativo. */}
-          <Chip
-            label="Início"
-            color="secondary"
-            size="small"
-            sx={{ fontWeight: 500 }}
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
+      <AppBar position="fixed" elevation={0} sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+        <Toolbar sx={{ gap: 2, ...alturaCabecalhoSx }}>
+          <Box
+            component="img"
+            src="/brasao-marilia.png"
+            alt="Brasão do Município de Marília"
+            sx={{ height: 64, width: "auto" }}
           />
+          <Typography variant="h5" component="div">
+            SIGA — Sistema Integrado de Gestão de Ativos
+          </Typography>
+
+          <Box sx={{ flexGrow: 1 }} />
+
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "primary.contrastText", lineHeight: 1, position: "relative", top: "2px" }}
+            >
+              {usuario?.nome}
+            </Typography>
+
+            <Tooltip title="Meu perfil">
+              <IconButton onClick={() => navigate("/usuarios")} sx={{ p: 0 }} aria-label="meu perfil">
+                <Avatar src={fotoUrl ?? undefined} sx={{ width: 48, height: 48, bgcolor: "secondary.main" }}>
+                  <AccountCircleOutlinedIcon sx={{ fontSize: 32 }} />
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={modo === "dark" ? "Modo claro" : "Modo escuro"}>
+              <IconButton color="inherit" onClick={alternarModo} aria-label="alternar tema claro/escuro">
+                {modo === "dark" ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Sair">
+              <IconButton color="inherit" onClick={handleSair} aria-label="sair">
+                <LogoutOutlinedIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ flex: 1, p: 3 }}>
+
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: LARGURA_MENU,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": {
+            width: LARGURA_MENU,
+            boxSizing: "border-box",
+            bgcolor: "background.paper",
+            borderRight: "1px solid",
+            borderColor: "divider",
+          },
+        }}
+      >
+        {/* Espaçador com a mesma altura do AppBar fixo — sem ele o conteúdo
+            abaixo ficaria escondido atrás do cabeçalho. */}
+        <Toolbar sx={alturaCabecalhoSx} />
+        <List sx={{ pt: 1 }}>
+          {itensDeNavegacao.map((item) => {
+            const Icone = item.icone;
+            return (
+              <ListItem key={item.caminho} disablePadding>
+                <ListItemButton
+                  component={NavLink}
+                  to={item.caminho}
+                  end={item.caminho === "/"}
+                  sx={{
+                    mx: 1,
+                    borderRadius: 1,
+                    minHeight: 44,
+                    color: "text.primary",
+                    "&.active": {
+                      bgcolor: "secondary.main",
+                      color: "secondary.contrastText",
+                      fontWeight: 500,
+                      "& .MuiListItemIcon-root": { color: "inherit" },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 0, mr: 2, color: "text.secondary" }}>
+                    <Icone />
+                  </ListItemIcon>
+                  <ListItemText primary={item.rotulo} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Drawer>
+
+      <Box component="main" sx={{ flex: 1, minWidth: 0, color: "text.primary", p: 3 }}>
+        <Toolbar sx={alturaCabecalhoSx} />
         <Outlet />
       </Box>
     </Box>
