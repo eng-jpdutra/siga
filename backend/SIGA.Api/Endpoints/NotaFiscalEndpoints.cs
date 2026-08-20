@@ -16,13 +16,15 @@ public static class NotaFiscalEndpoints
 
     public static void MapNotaFiscalEndpoints(this IEndpointRouteBuilder app)
     {
+        // Leitura pra quem estiver logado; escrita só pra Administrador —
+        // Consulta nunca escreve (ver CLAUDE.md).
         var grupo = app.MapGroup("/api/notas-fiscais").RequireAuthorization();
 
         grupo.MapGet("/", ListarAsync);
         grupo.MapGet("/{id:int}", ObterPorIdAsync);
-        grupo.MapPost("/", CriarAsync).DisableAntiforgery();
-        grupo.MapPut("/{id:int}", AtualizarAsync).DisableAntiforgery();
-        grupo.MapDelete("/{id:int}", RemoverAsync);
+        grupo.MapPost("/", CriarAsync).DisableAntiforgery().RequireAuthorization("SomenteAdministrador");
+        grupo.MapPut("/{id:int}", AtualizarAsync).DisableAntiforgery().RequireAuthorization("SomenteAdministrador");
+        grupo.MapDelete("/{id:int}", RemoverAsync).RequireAuthorization("SomenteAdministrador");
         grupo.MapGet("/{id:int}/arquivo", BaixarArquivoAsync);
     }
 

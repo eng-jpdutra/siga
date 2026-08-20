@@ -1,22 +1,20 @@
 namespace SIGA.Api.DTOs;
 
-public record ResponsavelResponse(
+public record VereadorResponse(
     int Id,
     string Nome,
-    string? Cargo,
+    string? Partido,
+    string? Contato,
     int? LocalId,
     string? LocalNome,
-    string? Contato,
-    string Status,
-    string? Observacao
+    bool Ativo
 );
 
 // Usado tanto para criar quanto para atualizar — o status muda por endpoint
 // próprio (ativar/desativar), nunca por aqui.
-public record ResponsavelRequest(
+public record VereadorRequest(
     string Nome,
-    string? Cargo,
-    int? LocalId,
+    string? Partido,
     string? Contato,
-    string? Observacao
+    int? LocalId
 );

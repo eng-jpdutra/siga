@@ -12,13 +12,15 @@ public static class LocalEndpoints
 
     public static void MapLocalEndpoints(this IEndpointRouteBuilder app)
     {
+        // Leitura pra quem estiver logado; escrita só pra Administrador —
+        // Consulta nunca escreve (ver CLAUDE.md).
         var grupo = app.MapGroup("/api/locais").RequireAuthorization();
 
         grupo.MapGet("/", ListarAsync);
         grupo.MapGet("/{id:int}", ObterPorIdAsync);
-        grupo.MapPost("/", CriarAsync);
-        grupo.MapPut("/{id:int}", AtualizarAsync);
-        grupo.MapDelete("/{id:int}", RemoverAsync);
+        grupo.MapPost("/", CriarAsync).RequireAuthorization("SomenteAdministrador");
+        grupo.MapPut("/{id:int}", AtualizarAsync).RequireAuthorization("SomenteAdministrador");
+        grupo.MapDelete("/{id:int}", RemoverAsync).RequireAuthorization("SomenteAdministrador");
     }
 
     private static async Task<Ok<PagedResult<LocalResponse>>> ListarAsync(
@@ -42,7 +44,7 @@ public static class LocalEndpoints
             .OrderBy(l => l.Nome)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(l => new LocalResponse(l.Id, l.Nome, l.Descricao))
+            .Select(l => new LocalResponse(l.Id, l.Nome, l.Descricao, l.Tipo))
             .ToListAsync();
 
         return TypedResults.Ok(new PagedResult<LocalResponse>
@@ -59,7 +61,7 @@ public static class LocalEndpoints
         var local = await db.Locais.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
         if (local is null) return TypedResults.NotFound();
 
-        return TypedResults.Ok(new LocalResponse(local.Id, local.Nome, local.Descricao));
+        return TypedResults.Ok(new LocalResponse(local.Id, local.Nome, local.Descricao, local.Tipo));
     }
 
     private static async Task<Results<Created<LocalResponse>, ValidationProblem, Conflict<string>>> CriarAsync(
@@ -71,11 +73,11 @@ public static class LocalEndpoints
         if (await NomeEmUsoAsync(db, request.Nome))
             return TypedResults.Conflict($"Já existe um local chamado \"{request.Nome}\".");
 
-        var local = new Local { Nome = request.Nome.Trim(), Descricao = request.Descricao };
+        var local = new Local { Nome = request.Nome.Trim(), Descricao = request.Descricao, Tipo = request.Tipo };
         db.Locais.Add(local);
         await db.SaveChangesAsync();
 
-        var response = new LocalResponse(local.Id, local.Nome, local.Descricao);
+        var response = new LocalResponse(local.Id, local.Nome, local.Descricao, local.Tipo);
         return TypedResults.Created($"/api/locais/{local.Id}", response);
     }
 
@@ -93,9 +95,10 @@ public static class LocalEndpoints
 
         local.Nome = request.Nome.Trim();
         local.Descricao = request.Descricao;
+        local.Tipo = request.Tipo;
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok(new LocalResponse(local.Id, local.Nome, local.Descricao));
+        return TypedResults.Ok(new LocalResponse(local.Id, local.Nome, local.Descricao, local.Tipo));
     }
 
     private static async Task<Results<NoContent, NotFound, Conflict<string>>> RemoverAsync(SigaDbContext db, int id)

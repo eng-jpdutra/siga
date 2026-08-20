@@ -20,35 +20,34 @@ import DialogActions from "@mui/material/DialogActions";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
-import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
+import HowToVoteOutlinedIcon from "@mui/icons-material/HowToVoteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import {
-  listarResponsaveis,
-  criarResponsavel,
-  atualizarResponsavel,
-  desativarResponsavel,
-  ativarResponsavel,
-} from "../api/responsaveis";
+  listarVereadores,
+  criarVereador,
+  atualizarVereador,
+  desativarVereador,
+  ativarVereador,
+} from "../api/vereadores";
 import SeletorLocal from "../components/SeletorLocal";
+import { usePodeEscrever } from "../auth/AuthContext";
 
-function DialogResponsavel({ aberto, onFechar, onSalvar, salvando, erro, responsavelEditando }) {
-  const ehEdicao = !!responsavelEditando;
+function DialogVereador({ aberto, onFechar, onSalvar, salvando, erro, vereadorEditando }) {
+  const ehEdicao = !!vereadorEditando;
 
-  const [nome, setNome] = useState(responsavelEditando?.nome ?? "");
-  const [cargo, setCargo] = useState(responsavelEditando?.cargo ?? "");
-  const [localId, setLocalId] = useState(responsavelEditando?.localId ?? null);
-  const [contato, setContato] = useState(responsavelEditando?.contato ?? "");
-  const [observacao, setObservacao] = useState(responsavelEditando?.observacao ?? "");
+  const [nome, setNome] = useState(vereadorEditando?.nome ?? "");
+  const [partido, setPartido] = useState(vereadorEditando?.partido ?? "");
+  const [contato, setContato] = useState(vereadorEditando?.contato ?? "");
+  const [localId, setLocalId] = useState(vereadorEditando?.localId ?? null);
 
   const handleSalvar = () => {
     onSalvar({
       nome,
-      cargo: cargo || null,
-      localId,
+      partido: partido || null,
       contato: contato || null,
-      observacao: observacao || null,
+      localId,
     });
   };
 
@@ -56,18 +55,20 @@ function DialogResponsavel({ aberto, onFechar, onSalvar, salvando, erro, respons
 
   return (
     <Dialog open={aberto} onClose={onFechar} fullWidth maxWidth="sm">
-      <DialogTitle>{ehEdicao ? "Editar responsável" : "Novo responsável"}</DialogTitle>
+      <DialogTitle>{ehEdicao ? "Editar vereador" : "Novo vereador"}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {erro && <Alert severity="error">{erro}</Alert>}
 
           <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required />
-          <TextField label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
 
           <Stack direction="row" spacing={2}>
-            <Box sx={{ flex: 1 }}>
-              <SeletorLocal value={localId} onChange={setLocalId} fullWidth />
-            </Box>
+            <TextField
+              label="Partido"
+              value={partido}
+              onChange={(e) => setPartido(e.target.value)}
+              sx={{ flex: 1 }}
+            />
             <TextField
               label="Contato"
               value={contato}
@@ -75,14 +76,7 @@ function DialogResponsavel({ aberto, onFechar, onSalvar, salvando, erro, respons
               sx={{ flex: 1 }}
             />
           </Stack>
-
-          <TextField
-            label="Observação"
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            multiline
-            minRows={2}
-          />
+          <SeletorLocal value={localId} onChange={setLocalId} label="Gabinete" fullWidth />
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -95,41 +89,42 @@ function DialogResponsavel({ aberto, onFechar, onSalvar, salvando, erro, respons
   );
 }
 
-export default function ResponsaveisPage() {
+export default function VereadoresPage() {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
 
   const [nome, setNome] = useState("");
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
-  const [dialogResponsavel, setDialogResponsavel] = useState(null); // null | "novo" | responsavel
+  const [dialogVereador, setDialogVereador] = useState(null); // null | "novo" | vereador
   const [mensagem, setMensagem] = useState(null);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["responsaveis", { nome, page: paginationModel.page, pageSize: paginationModel.pageSize }],
+    queryKey: ["vereadores", { nome, page: paginationModel.page, pageSize: paginationModel.pageSize }],
     queryFn: () =>
-      listarResponsaveis({ nome, page: paginationModel.page + 1, pageSize: paginationModel.pageSize }),
+      listarVereadores({ nome, page: paginationModel.page + 1, pageSize: paginationModel.pageSize }),
     placeholderData: keepPreviousData,
   });
 
   function invalidarEFechar(mensagemSucesso) {
-    queryClient.invalidateQueries({ queryKey: ["responsaveis"] });
-    setDialogResponsavel(null);
+    queryClient.invalidateQueries({ queryKey: ["vereadores"] });
+    setDialogVereador(null);
     setMensagem({ tipo: "success", texto: mensagemSucesso });
   }
 
   const criarMutation = useMutation({
-    mutationFn: criarResponsavel,
-    onSuccess: () => invalidarEFechar("Responsável criado com sucesso."),
+    mutationFn: criarVereador,
+    onSuccess: () => invalidarEFechar("Vereador criado com sucesso."),
   });
 
   const atualizarMutation = useMutation({
-    mutationFn: ({ id, dados }) => atualizarResponsavel(id, dados),
-    onSuccess: () => invalidarEFechar("Responsável atualizado."),
+    mutationFn: ({ id, dados }) => atualizarVereador(id, dados),
+    onSuccess: () => invalidarEFechar("Vereador atualizado."),
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, ativar }) => (ativar ? ativarResponsavel(id) : desativarResponsavel(id)),
+    mutationFn: ({ id, ativar }) => (ativar ? ativarVereador(id) : desativarVereador(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["responsaveis"] });
+      queryClient.invalidateQueries({ queryKey: ["vereadores"] });
       setMensagem({ tipo: "success", texto: "Status atualizado." });
     },
     onError: (err) => setMensagem({ tipo: "error", texto: err.message }),
@@ -137,18 +132,18 @@ export default function ResponsaveisPage() {
 
   const colunas = [
     { field: "nome", headerName: "Nome", flex: 1 },
-    { field: "cargo", headerName: "Cargo", flex: 1 },
-    { field: "localNome", headerName: "Local", flex: 1 },
+    { field: "partido", headerName: "Partido", flex: 1 },
+    { field: "localNome", headerName: "Gabinete", flex: 1 },
     { field: "contato", headerName: "Contato", flex: 1 },
     {
-      field: "status",
+      field: "ativo",
       headerName: "Status",
       width: 110,
       renderCell: (params) => (
         <Chip
           size="small"
-          label={params.value === "Ativo" ? "Ativo" : "Inativo"}
-          color={params.value === "Ativo" ? "success" : "default"}
+          label={params.value ? "Ativo" : "Inativo"}
+          color={params.value ? "success" : "default"}
           variant="outlined"
         />
       ),
@@ -158,34 +153,35 @@ export default function ResponsaveisPage() {
       headerName: "",
       sortable: false,
       width: 100,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Editar">
-            <IconButton size="small" onClick={() => setDialogResponsavel(params.row)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={params.row.status === "Ativo" ? "Desativar" : "Ativar"}>
-            <IconButton
-              size="small"
-              onClick={() => statusMutation.mutate({ id: params.row.id, ativar: params.row.status !== "Ativo" })}
-            >
-              {params.row.status === "Ativo" ? (
-                <BlockOutlinedIcon fontSize="small" />
-              ) : (
-                <CheckCircleOutlinedIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
+      renderCell: (params) =>
+        podeEscrever && (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Editar">
+              <IconButton size="small" onClick={() => setDialogVereador(params.row)}>
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={params.row.ativo ? "Desativar" : "Ativar"}>
+              <IconButton
+                size="small"
+                onClick={() => statusMutation.mutate({ id: params.row.id, ativar: !params.row.ativo })}
+              >
+                {params.row.ativo ? (
+                  <BlockOutlinedIcon fontSize="small" />
+                ) : (
+                  <CheckCircleOutlinedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ),
     },
   ];
 
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>
-        Responsáveis
+        Vereadores
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: "center" }}>
@@ -197,14 +193,16 @@ export default function ResponsaveisPage() {
           sx={{ minWidth: 280 }}
         />
         <Box sx={{ flexGrow: 1 }} />
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<PersonAddAltOutlinedIcon />}
-          onClick={() => setDialogResponsavel("novo")}
-        >
-          Novo responsável
-        </Button>
+        {podeEscrever && (
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<HowToVoteOutlinedIcon />}
+            onClick={() => setDialogVereador("novo")}
+          >
+            Novo vereador
+          </Button>
+        )}
       </Stack>
 
       {isError && <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>}
@@ -229,10 +227,10 @@ export default function ResponsaveisPage() {
         />
       </Box>
 
-      {dialogResponsavel && (
-        <DialogResponsavel
+      {dialogVereador && (
+        <DialogVereador
           aberto
-          responsavelEditando={dialogResponsavel === "novo" ? null : dialogResponsavel}
+          vereadorEditando={dialogVereador === "novo" ? null : dialogVereador}
           salvando={criarMutation.isPending || atualizarMutation.isPending}
           erro={
             criarMutation.isError
@@ -241,11 +239,11 @@ export default function ResponsaveisPage() {
                 ? atualizarMutation.error.message
                 : null
           }
-          onFechar={() => setDialogResponsavel(null)}
+          onFechar={() => setDialogVereador(null)}
           onSalvar={(dados) =>
-            dialogResponsavel === "novo"
+            dialogVereador === "novo"
               ? criarMutation.mutate(dados)
-              : atualizarMutation.mutate({ id: dialogResponsavel.id, dados })
+              : atualizarMutation.mutate({ id: dialogVereador.id, dados })
           }
         />
       )}

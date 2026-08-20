@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -50,11 +51,10 @@ builder.Services.AddDbContext<SigaDbContext>(options =>
     }
 });
 
-// JWT: a chave de assinatura é segredo (user-secrets em dev, variável de
-// ambiente em produção) — nunca fica no appsettings versionado. Falha cedo
-// se não tiver sido configurada, em vez de subir com uma chave vazia.
+// JWT: quem emite o token é o Portal (login único do ecossistema — ver
+// PORTAL/CLAUDE.md), não o SIGA. A chave de assinatura é a mesma dos dois
+// lados (segredo — user-secrets em dev, variável de ambiente em produção).
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-builder.Services.AddSingleton<TokenService>();
 
 // Arquivos de nota fiscal ficam em disco (pasta configurável via
 // Uploads:Diretorio) — o banco só guarda o caminho relativo.
@@ -70,7 +70,8 @@ var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
 if (string.IsNullOrWhiteSpace(jwtOptions.Key))
 {
     throw new InvalidOperationException(
-        "Jwt:Key não configurada. Em dev, rode: dotnet user-secrets set \"Jwt:Key\" \"<chave-aleatoria-de-32+-caracteres>\".");
+        "Jwt:Key não configurada. Precisa ser a MESMA chave do Portal — " +
+        "dotnet user-secrets set \"Jwt:Key\" \"<mesma chave do Portal>\".");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -87,9 +88,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
         };
     });
+
+// Promove o claim "sistemaPapel" (ex.: "SIGA:Administrador") vindo do
+// Portal pra uma role de verdade — ver Services/SistemaPapelClaimsTransformation.cs.
+builder.Services.AddTransient<IClaimsTransformation, SistemaPapelClaimsTransformation>();
+
 builder.Services.AddAuthorization(options =>
 {
-    // Gerenciar contas de usuário é ação sensível — só Administrador.
+    // Só dois papéis existem: Administrador (lê e escreve) e Consulta (só
+    // lê). Essa política gate-keeps toda escrita — criar/editar/baixar em
+    // cada domínio do inventário (ver os grupos de rota em Endpoints/*.cs).
     options.AddPolicy("SomenteAdministrador", p => p.RequireRole("Administrador"));
 });
 
@@ -107,22 +115,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
-app.MapAuthEndpoints();
 app.MapLocalEndpoints();
-app.MapResponsavelEndpoints();
-app.MapUsuarioEndpoints();
-app.MapPapelEndpoints();
 app.MapNotaFiscalEndpoints();
 app.MapEquipamentoEndpoints();
 app.MapLicencaEndpoints();
+app.MapVereadorEndpoints();
 app.MapDashboardEndpoints();
-
-// Papéis básicos sempre; usuário admin padrão só em desenvolvimento
-// (bootstrap de produção fica para quando existir o processo de deploy).
-using (var escopo = app.Services.CreateScope())
-{
-    var db = escopo.ServiceProvider.GetRequiredService<SigaDbContext>();
-    await SeedInicial.ExecutarAsync(db, criarAdminPadrao: app.Environment.IsDevelopment());
-}
 
 app.Run();

@@ -13,13 +13,15 @@ public static class LicencaEndpoints
 
     public static void MapLicencaEndpoints(this IEndpointRouteBuilder app)
     {
+        // Leitura pra quem estiver logado; escrita só pra Administrador —
+        // Consulta nunca escreve (ver CLAUDE.md).
         var grupo = app.MapGroup("/api/licencas").RequireAuthorization();
 
         grupo.MapGet("/", ListarAsync);
         grupo.MapGet("/{id:int}", ObterPorIdAsync);
-        grupo.MapPost("/", CriarAsync);
-        grupo.MapPut("/{id:int}", AtualizarAsync);
-        grupo.MapDelete("/{id:int}", RemoverAsync);
+        grupo.MapPost("/", CriarAsync).RequireAuthorization("SomenteAdministrador");
+        grupo.MapPut("/{id:int}", AtualizarAsync).RequireAuthorization("SomenteAdministrador");
+        grupo.MapDelete("/{id:int}", RemoverAsync).RequireAuthorization("SomenteAdministrador");
     }
 
     private static async Task<Ok<PagedResult<LicencaResponse>>> ListarAsync(

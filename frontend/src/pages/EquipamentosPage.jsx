@@ -25,11 +25,16 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
 import AddIcon from "@mui/icons-material/Add";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import {
   listarEquipamentos,
   obterEquipamento,
@@ -40,19 +45,93 @@ import {
   listarHistorico,
   criarHistorico,
 } from "../api/equipamentos";
+import {
+  listarConfiguracoes,
+  criarConfiguracao,
+  atualizarConfiguracao,
+  removerConfiguracao,
+} from "../api/configuracoes";
 import SeletorLocal from "../components/SeletorLocal";
-import SeletorResponsavel from "../components/SeletorResponsavel";
 import SeletorNotaFiscal from "../components/SeletorNotaFiscal";
+import { usePodeEscrever } from "../auth/AuthContext";
 
-const TIPOS = ["Computador", "Impressora", "DispositivoRede", "Outro"];
-const RESUMO_TIPO = { Computador: "Computador", Impressora: "Impressora", DispositivoRede: "Disp. de rede", Outro: "Outro" };
+const TIPOS = ["Computador", "Impressora", "Monitor", "DispositivoRede", "Nobreak", "Camera", "DvrNvr", "TelefoneIp", "Outro"];
+const RESUMO_TIPO = {
+  Computador: "Computador",
+  Impressora: "Impressora",
+  Monitor: "Monitor",
+  DispositivoRede: "Disp. de rede",
+  Nobreak: "Nobreak",
+  Camera: "Câmera",
+  DvrNvr: "DVR/NVR",
+  TelefoneIp: "Telefone IP",
+  Outro: "Outro",
+};
 const STATUS_OPCOES = ["Ativo", "Manutencao", "Baixado"];
-const SUBTIPO_COMPUTADOR = ["Desktop", "Notebook"];
-const TIPO_ARMAZENAMENTO = ["HDD", "SSD", "NVMe"];
-const TIPO_IMPRESSAO = ["Laser", "JatoDeTinta", "Matricial"];
-const CONEXAO_IMPRESSORA = ["USB", "Rede"];
-const SUBTIPO_DISPOSITIVO_REDE = ["Switch", "Roteador", "AccessPoint", "Firewall"];
 const TIPOS_HISTORICO_MANUAL = ["Manutencao", "Formatacao", "Outro"];
+
+// Campos específicos de cada tipo — a "lista de campos por tipo" fica só
+// aqui, num lugar só (ver CLAUDE.md). Cada entrada vira um input na tela,
+// lida/gravada dentro do JSON `Detalhes` do equipamento; os campos comuns
+// (marca, modelo, patrimônio, local...) continuam fora daqui, como colunas.
+// IMPORTANTE: a `chave` é o nome gravado no JSON — não renomear depois que
+// houver equipamentos cadastrados desse tipo (o rótulo pode mudar à vontade).
+const CAMPOS_POR_TIPO = {
+  Computador: [
+    { chave: "Subtipo", rotulo: "Subtipo", tipo: "select", opcoes: ["Desktop", "Notebook", "All-in-One"] },
+    { chave: "Processador", rotulo: "Processador", tipo: "texto" },
+    { chave: "RamGb", rotulo: "RAM (GB)", tipo: "numero" },
+    { chave: "ArmazenamentoGb", rotulo: "Armazenamento (GB)", tipo: "numero" },
+    { chave: "TipoArmazenamento", rotulo: "Tipo de armazenamento", tipo: "select", opcoes: ["SSD", "HDD", "NVMe"] },
+    { chave: "SistemaOperacional", rotulo: "Sistema operacional", tipo: "texto" },
+  ],
+  Impressora: [
+    { chave: "TipoImpressao", rotulo: "Tipo de impressão", tipo: "select", opcoes: ["Laser", "JatoDeTinta", "Termica"] },
+    { chave: "Colorida", rotulo: "Colorida", tipo: "booleano" },
+    { chave: "Conexao", rotulo: "Conexão", tipo: "select", opcoes: ["USB", "Rede", "USB+Rede"] },
+    { chave: "ContadorPaginas", rotulo: "Contador de páginas", tipo: "numero" },
+  ],
+  Monitor: [
+    { chave: "Polegadas", rotulo: "Polegadas", tipo: "numero" },
+    { chave: "Resolucao", rotulo: "Resolução", tipo: "texto" },
+    { chave: "TaxaAtualizacao", rotulo: "Taxa de atualização (Hz)", tipo: "numero" },
+    { chave: "TipoPainel", rotulo: "Tipo de painel", tipo: "select", opcoes: ["IPS", "VA", "TN"] },
+    { chave: "Conexoes", rotulo: "Conexões", tipo: "texto" },
+  ],
+  DispositivoRede: [
+    { chave: "Subtipo", rotulo: "Subtipo", tipo: "select", opcoes: ["Switch", "Roteador", "AccessPoint", "Firewall"] },
+    { chave: "NumPortas", rotulo: "Nº de portas", tipo: "numero" },
+    { chave: "VersaoFirmware", rotulo: "Versão do firmware", tipo: "texto" },
+  ],
+  Nobreak: [
+    { chave: "PotenciaVA", rotulo: "Potência (VA)", tipo: "numero" },
+    { chave: "NumTomadas", rotulo: "Nº de tomadas", tipo: "numero" },
+    { chave: "TempoAutonomiaMin", rotulo: "Autonomia (min)", tipo: "numero" },
+    { chave: "TipoBateria", rotulo: "Tipo de bateria", tipo: "select", opcoes: ["Selada", "Externa"] },
+    { chave: "DataTrocaBateria", rotulo: "Data da troca de bateria", tipo: "data" },
+  ],
+  Camera: [
+    { chave: "Subtipo", rotulo: "Subtipo", tipo: "select", opcoes: ["Bullet", "Dome", "PTZ"] },
+    { chave: "Resolucao", rotulo: "Resolução", tipo: "texto" },
+    { chave: "Alimentacao", rotulo: "Alimentação", tipo: "select", opcoes: ["PoE", "12V"] },
+    { chave: "Localizacao", rotulo: "O que a câmera cobre", tipo: "texto" },
+  ],
+  DvrNvr: [
+    { chave: "CanaisTotais", rotulo: "Canais totais", tipo: "numero" },
+    { chave: "CanaisUsados", rotulo: "Canais usados", tipo: "numero" },
+    { chave: "ArmazenamentoTb", rotulo: "Armazenamento (TB)", tipo: "numero" },
+    { chave: "DiasRetencao", rotulo: "Dias de retenção", tipo: "numero" },
+  ],
+  TelefoneIp: [
+    { chave: "Ramal", rotulo: "Ramal", tipo: "texto" },
+    { chave: "ProtocoloVoip", rotulo: "Protocolo VoIP", tipo: "texto" },
+  ],
+  Outro: [],
+};
+
+// Tipos com placa de rede — só esses mostram Endereço IP/MAC (campos reais
+// do equipamento, não do JSON `Detalhes`, porque o MAC precisa ser único).
+const TIPOS_COM_REDE = ["DispositivoRede", "Camera", "DvrNvr", "TelefoneIp"];
 
 function valoresIniciais(eq) {
   return {
@@ -62,26 +141,13 @@ function valoresIniciais(eq) {
     marca: eq?.marca ?? "",
     modelo: eq?.modelo ?? "",
     localId: eq?.localId ?? null,
-    responsavelId: eq?.responsavelId ?? null,
     notaFiscal: eq?.notaFiscalId ? { id: eq.notaFiscalId, numero: eq.notaFiscalNumero } : null,
+    enderecoMac: eq?.enderecoMac ?? "",
+    enderecoIp: eq?.enderecoIp ?? "",
+    detalhes: eq?.detalhes ?? {},
     anoAquisicao: eq?.anoAquisicao ?? "",
     garantiaAte: eq?.garantiaAte ?? "",
     observacao: eq?.observacao ?? "",
-    subtipoComputador: eq?.subtipoComputador ?? "",
-    sistemaOperacional: eq?.sistemaOperacional ?? "",
-    ramGb: eq?.ramGb ?? "",
-    armazenamentoGb: eq?.armazenamentoGb ?? "",
-    tipoArmazenamento: eq?.tipoArmazenamento ?? "",
-    processador: eq?.processador ?? "",
-    tipoImpressao: eq?.tipoImpressao ?? "",
-    colorida: eq?.colorida ?? false,
-    conexao: eq?.conexao ?? "",
-    contadorPaginas: eq?.contadorPaginas ?? "",
-    subtipoDispositivoRede: eq?.subtipoDispositivoRede ?? "",
-    enderecoIp: eq?.enderecoIp ?? "",
-    enderecoMac: eq?.enderecoMac ?? "",
-    numPortas: eq?.numPortas ?? "",
-    versaoFirmware: eq?.versaoFirmware ?? "",
   };
 }
 
@@ -99,92 +165,93 @@ function paraPayload(form) {
     marca: form.marca,
     modelo: form.modelo,
     localId: form.localId,
-    responsavelId: form.responsavelId,
     notaFiscalId: form.notaFiscal?.id ?? null,
+    enderecoMac: form.enderecoMac || null,
+    enderecoIp: form.enderecoIp || null,
+    detalhes: form.detalhes,
     anoAquisicao: paraNumeroOuNulo(form.anoAquisicao),
     garantiaAte: form.garantiaAte || null,
     observacao: form.observacao || null,
-    subtipoComputador: form.subtipoComputador || null,
-    sistemaOperacional: form.sistemaOperacional || null,
-    ramGb: paraNumeroOuNulo(form.ramGb),
-    armazenamentoGb: paraNumeroOuNulo(form.armazenamentoGb),
-    tipoArmazenamento: form.tipoArmazenamento || null,
-    processador: form.processador || null,
-    tipoImpressao: form.tipoImpressao || null,
-    colorida: !!form.colorida,
-    conexao: form.conexao || null,
-    contadorPaginas: paraNumeroOuNulo(form.contadorPaginas),
-    subtipoDispositivoRede: form.subtipoDispositivoRede || null,
-    enderecoIp: form.enderecoIp || null,
-    enderecoMac: form.enderecoMac || null,
-    numPortas: paraNumeroOuNulo(form.numPortas),
-    versaoFirmware: form.versaoFirmware || null,
   };
 }
 
-function CamposComputador({ form, set }) {
-  return (
-    <>
-      <Stack direction="row" spacing={2}>
-        <TextField label="Subtipo" select value={form.subtipoComputador} onChange={(e) => set("subtipoComputador", e.target.value)} fullWidth>
-          <MenuItem value=""><em>Não informado</em></MenuItem>
-          {SUBTIPO_COMPUTADOR.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-        </TextField>
-        <TextField label="Sistema operacional" value={form.sistemaOperacional} onChange={(e) => set("sistemaOperacional", e.target.value)} fullWidth />
-      </Stack>
-      <Stack direction="row" spacing={2}>
-        <TextField label="RAM (GB)" type="number" value={form.ramGb} onChange={(e) => set("ramGb", e.target.value)} fullWidth />
-        <TextField label="Armazenamento (GB)" type="number" value={form.armazenamentoGb} onChange={(e) => set("armazenamentoGb", e.target.value)} fullWidth />
-        <TextField label="Tipo de armazenamento" select value={form.tipoArmazenamento} onChange={(e) => set("tipoArmazenamento", e.target.value)} fullWidth>
-          <MenuItem value=""><em>Não informado</em></MenuItem>
-          {TIPO_ARMAZENAMENTO.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-        </TextField>
-      </Stack>
-      <TextField label="Processador" value={form.processador} onChange={(e) => set("processador", e.target.value)} />
-    </>
-  );
-}
+// Renderiza os campos específicos do tipo selecionado, lendo/gravando em
+// `form.detalhes` — um único componente genérico em vez de um por tipo.
+function CamposDetalhes({ tipo, detalhes, setDetalhe }) {
+  const campos = CAMPOS_POR_TIPO[tipo] ?? [];
+  if (campos.length === 0) return null;
 
-function CamposImpressora({ form, set }) {
   return (
     <>
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <TextField label="Tipo de impressão" select value={form.tipoImpressao} onChange={(e) => set("tipoImpressao", e.target.value)} fullWidth>
-          <MenuItem value=""><em>Não informado</em></MenuItem>
-          {TIPO_IMPRESSAO.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-        </TextField>
-        <TextField label="Conexão" select value={form.conexao} onChange={(e) => set("conexao", e.target.value)} fullWidth>
-          <MenuItem value=""><em>Não informado</em></MenuItem>
-          {CONEXAO_IMPRESSORA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-        </TextField>
-      </Stack>
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <TextField label="Contador de páginas" type="number" value={form.contadorPaginas} onChange={(e) => set("contadorPaginas", e.target.value)} fullWidth />
-        <FormControlLabel
-          control={<Checkbox checked={form.colorida} onChange={(e) => set("colorida", e.target.checked)} />}
-          label="Colorida"
-          sx={{ minWidth: 160 }}
-        />
-      </Stack>
-    </>
-  );
-}
+      <Divider textAlign="left">Detalhes do {RESUMO_TIPO[tipo].toLowerCase()}</Divider>
+      <Stack spacing={2}>
+        {campos.map((campo) => {
+          const valor = detalhes[campo.chave] ?? (campo.tipo === "booleano" ? false : "");
 
-function CamposDispositivoRede({ form, set }) {
-  return (
-    <>
-      <Stack direction="row" spacing={2}>
-        <TextField label="Subtipo" select value={form.subtipoDispositivoRede} onChange={(e) => set("subtipoDispositivoRede", e.target.value)} fullWidth>
-          <MenuItem value=""><em>Não informado</em></MenuItem>
-          {SUBTIPO_DISPOSITIVO_REDE.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-        </TextField>
-        <TextField label="Nº de portas" type="number" value={form.numPortas} onChange={(e) => set("numPortas", e.target.value)} fullWidth />
+          if (campo.tipo === "select") {
+            return (
+              <TextField
+                key={campo.chave}
+                label={campo.rotulo}
+                select
+                value={valor}
+                onChange={(e) => setDetalhe(campo.chave, e.target.value)}
+                fullWidth
+              >
+                <MenuItem value=""><em>Não informado</em></MenuItem>
+                {campo.opcoes.map((op) => <MenuItem key={op} value={op}>{op}</MenuItem>)}
+              </TextField>
+            );
+          }
+
+          if (campo.tipo === "booleano") {
+            return (
+              <FormControlLabel
+                key={campo.chave}
+                control={<Checkbox checked={!!valor} onChange={(e) => setDetalhe(campo.chave, e.target.checked)} />}
+                label={campo.rotulo}
+              />
+            );
+          }
+
+          if (campo.tipo === "numero") {
+            return (
+              <TextField
+                key={campo.chave}
+                label={campo.rotulo}
+                type="number"
+                value={valor}
+                onChange={(e) => setDetalhe(campo.chave, e.target.value === "" ? "" : Number(e.target.value))}
+                fullWidth
+              />
+            );
+          }
+
+          if (campo.tipo === "data") {
+            return (
+              <TextField
+                key={campo.chave}
+                label={campo.rotulo}
+                type="date"
+                value={valor}
+                onChange={(e) => setDetalhe(campo.chave, e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                fullWidth
+              />
+            );
+          }
+
+          return (
+            <TextField
+              key={campo.chave}
+              label={campo.rotulo}
+              value={valor}
+              onChange={(e) => setDetalhe(campo.chave, e.target.value)}
+              fullWidth
+            />
+          );
+        })}
       </Stack>
-      <Stack direction="row" spacing={2}>
-        <TextField label="Endereço IP" value={form.enderecoIp} onChange={(e) => set("enderecoIp", e.target.value)} fullWidth />
-        <TextField label="Endereço MAC" value={form.enderecoMac} onChange={(e) => set("enderecoMac", e.target.value)} fullWidth />
-      </Stack>
-      <TextField label="Versão do firmware" value={form.versaoFirmware} onChange={(e) => set("versaoFirmware", e.target.value)} />
     </>
   );
 }
@@ -207,8 +274,11 @@ function DialogEquipamento({ aberto, onFechar, onSalvar, salvando, erro, equipam
   }
 
   const set = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
+  const setDetalhe = (chave, valor) =>
+    setForm((f) => ({ ...f, detalhes: { ...f.detalhes, [chave]: valor === "" ? undefined : valor } }));
 
   const valido = form.marca.trim() && form.modelo.trim();
+  const mostrarRede = TIPOS_COM_REDE.includes(form.tipo);
 
   return (
     <Dialog open={aberto} onClose={onFechar} fullWidth maxWidth="md">
@@ -245,17 +315,20 @@ function DialogEquipamento({ aberto, onFechar, onSalvar, salvando, erro, equipam
               <TextField label="Número de série" value={form.numeroSerie} onChange={(e) => set("numeroSerie", e.target.value)} fullWidth />
             </Stack>
 
-            <Divider textAlign="left">Localização e responsabilidade</Divider>
+            <Divider textAlign="left">Localização</Divider>
 
-            <Stack direction="row" spacing={2}>
-              <Box sx={{ flex: 1 }}>
-                <SeletorLocal value={form.localId} onChange={(v) => set("localId", v)} fullWidth />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <SeletorResponsavel value={form.responsavelId} onChange={(v) => set("responsavelId", v)} fullWidth />
-              </Box>
-            </Stack>
+            <SeletorLocal value={form.localId} onChange={(v) => set("localId", v)} fullWidth />
             <SeletorNotaFiscal value={form.notaFiscal} onChange={(v) => set("notaFiscal", v)} />
+
+            {mostrarRede && (
+              <>
+                <Divider textAlign="left">Rede</Divider>
+                <Stack direction="row" spacing={2}>
+                  <TextField label="Endereço IP" value={form.enderecoIp} onChange={(e) => set("enderecoIp", e.target.value)} fullWidth />
+                  <TextField label="Endereço MAC" value={form.enderecoMac} onChange={(e) => set("enderecoMac", e.target.value)} fullWidth />
+                </Stack>
+              </>
+            )}
 
             <Divider textAlign="left">Aquisição</Divider>
 
@@ -271,10 +344,7 @@ function DialogEquipamento({ aberto, onFechar, onSalvar, salvando, erro, equipam
               />
             </Stack>
 
-            {form.tipo !== "Outro" && <Divider textAlign="left">Detalhes do {RESUMO_TIPO[form.tipo].toLowerCase()}</Divider>}
-            {form.tipo === "Computador" && <CamposComputador form={form} set={set} />}
-            {form.tipo === "Impressora" && <CamposImpressora form={form} set={set} />}
-            {form.tipo === "DispositivoRede" && <CamposDispositivoRede form={form} set={set} />}
+            <CamposDetalhes tipo={form.tipo} detalhes={form.detalhes} setDetalhe={setDetalhe} />
 
             <TextField label="Observação" value={form.observacao} onChange={(e) => set("observacao", e.target.value)} multiline minRows={2} />
           </Stack>
@@ -292,6 +362,7 @@ function DialogEquipamento({ aberto, onFechar, onSalvar, salvando, erro, equipam
 
 function DialogHistorico({ equipamentoId, aberto, onFechar }) {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
   const [tipo, setTipo] = useState("Manutencao");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [descricao, setDescricao] = useState("");
@@ -333,32 +404,149 @@ function DialogHistorico({ equipamentoId, aberto, onFechar }) {
           ))}
         </Stack>
 
-        <Divider textAlign="left">Novo lançamento</Divider>
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          {mutation.isError && <Alert severity="error">{mutation.error.message}</Alert>}
-          <Stack direction="row" spacing={2}>
-            <TextField label="Tipo" select value={tipo} onChange={(e) => setTipo(e.target.value)} sx={{ minWidth: 180 }}>
-              {TIPOS_HISTORICO_MANUAL.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-            </TextField>
-            <TextField
-              label="Data"
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
+        {podeEscrever && (
+          <>
+            <Divider textAlign="left">Novo lançamento</Divider>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              {mutation.isError && <Alert severity="error">{mutation.error.message}</Alert>}
+              <Stack direction="row" spacing={2}>
+                <TextField label="Tipo" select value={tipo} onChange={(e) => setTipo(e.target.value)} sx={{ minWidth: 180 }}>
+                  {TIPOS_HISTORICO_MANUAL.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                </TextField>
+                <TextField
+                  label="Data"
+                  type="date"
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Stack>
+              <TextField label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} multiline minRows={2} />
+              <Box>
+                <Button
+                  variant="outlined"
+                  onClick={() => mutation.mutate()}
+                  disabled={!descricao.trim() || mutation.isPending}
+                >
+                  Adicionar lançamento
+                </Button>
+              </Box>
+            </Stack>
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onFechar}>Fechar</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// Anotações técnicas do equipamento — diferente do histórico, podem ser
+// editadas/removidas (não é um diário de eventos, ver CLAUDE.md).
+function DialogConfiguracoes({ equipamentoId, aberto, onFechar }) {
+  const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
+  const [editando, setEditando] = useState(null); // null | "novo" | configuracao
+  const [titulo, setTitulo] = useState("");
+  const [conteudo, setConteudo] = useState("");
+
+  const { data: configuracoes = [], isLoading } = useQuery({
+    queryKey: ["configuracoes", equipamentoId],
+    queryFn: () => listarConfiguracoes(equipamentoId),
+    enabled: aberto,
+  });
+
+  function iniciarEdicao(config) {
+    setEditando(config ?? "novo");
+    setTitulo(config?.titulo ?? "");
+    setConteudo(config?.conteudo ?? "");
+  }
+
+  function cancelarEdicao() {
+    setEditando(null);
+    setTitulo("");
+    setConteudo("");
+  }
+
+  const salvarMutation = useMutation({
+    mutationFn: () =>
+      editando === "novo"
+        ? criarConfiguracao(equipamentoId, { titulo, conteudo })
+        : atualizarConfiguracao(equipamentoId, editando.id, { titulo, conteudo }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["configuracoes", equipamentoId] });
+      cancelarEdicao();
+    },
+  });
+
+  const removerMutation = useMutation({
+    mutationFn: (configuracaoId) => removerConfiguracao(equipamentoId, configuracaoId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["configuracoes", equipamentoId] }),
+  });
+
+  return (
+    <Dialog open={aberto} onClose={onFechar} fullWidth maxWidth="sm">
+      <DialogTitle>Configurações e anotações</DialogTitle>
+      <DialogContent>
+        {editando ? (
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {salvarMutation.isError && <Alert severity="error">{salvarMutation.error.message}</Alert>}
+            <TextField label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus required />
+            <TextField label="Conteúdo" value={conteudo} onChange={(e) => setConteudo(e.target.value)} multiline minRows={4} required />
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Button onClick={cancelarEdicao}>Cancelar</Button>
+              <Button
+                variant="contained"
+                onClick={() => salvarMutation.mutate()}
+                disabled={!titulo.trim() || !conteudo.trim() || salvarMutation.isPending}
+              >
+                Salvar
+              </Button>
+            </Stack>
           </Stack>
-          <TextField label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} multiline minRows={2} />
-          <Box>
-            <Button
-              variant="outlined"
-              onClick={() => mutation.mutate()}
-              disabled={!descricao.trim() || mutation.isPending}
-            >
-              Adicionar lançamento
-            </Button>
-          </Box>
-        </Stack>
+        ) : (
+          <>
+            {isLoading && <CircularProgress size={24} />}
+            {!isLoading && configuracoes.length === 0 && (
+              <Typography variant="body2" color="text.secondary">Nenhuma anotação ainda.</Typography>
+            )}
+            <List disablePadding>
+              {configuracoes.map((c) => (
+                <ListItem
+                  key={c.id}
+                  disablePadding
+                  sx={{ py: 1, alignItems: "flex-start" }}
+                  secondaryAction={
+                    podeEscrever && (
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => iniciarEdicao(c)}>
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => removerMutation.mutate(c.id)}>
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    )
+                  }
+                >
+                  <ListItemText
+                    primary={c.titulo}
+                    secondary={c.conteudo}
+                    secondaryTypographyProps={{ sx: { whiteSpace: "pre-wrap" } }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+            {podeEscrever && (
+              <Box sx={{ mt: 2 }}>
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => iniciarEdicao(null)}>
+                  Nova anotação
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onFechar}>Fechar</Button>
@@ -369,6 +557,7 @@ function DialogHistorico({ equipamentoId, aberto, onFechar }) {
 
 export default function EquipamentosPage() {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
 
   const [termo, setTermo] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("");
@@ -376,6 +565,7 @@ export default function EquipamentosPage() {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
   const [dialogEquipamento, setDialogEquipamento] = useState(null); // null | "novo" | id
   const [historicoDe, setHistoricoDe] = useState(null); // id | null
+  const [configuracoesDe, setConfiguracoesDe] = useState(null); // id | null
   const [mensagem, setMensagem] = useState(null);
 
   const { data, isLoading, isError, error } = useQuery({
@@ -422,7 +612,6 @@ export default function EquipamentosPage() {
     { field: "marca", headerName: "Marca", flex: 1 },
     { field: "modelo", headerName: "Modelo", flex: 1 },
     { field: "localNome", headerName: "Local", flex: 1 },
-    { field: "responsavelNome", headerName: "Responsável", flex: 1 },
     {
       field: "status",
       headerName: "Status",
@@ -440,31 +629,40 @@ export default function EquipamentosPage() {
       field: "acoes",
       headerName: "",
       sortable: false,
-      width: 140,
+      width: 170,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Configurações">
+            <IconButton size="small" onClick={() => setConfiguracoesDe(params.row.id)}>
+              <DescriptionOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Histórico">
             <IconButton size="small" onClick={() => setHistoricoDe(params.row.id)}>
               <HistoryOutlinedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Editar">
-            <IconButton size="small" onClick={() => setDialogEquipamento(params.row.id)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={params.row.status === "Baixado" ? "Reativar" : "Dar baixa"}>
-            <IconButton
-              size="small"
-              onClick={() => statusMutation.mutate({ id: params.row.id, ativar: params.row.status === "Baixado" })}
-            >
-              {params.row.status === "Baixado" ? (
-                <CheckCircleOutlinedIcon fontSize="small" />
-              ) : (
-                <BlockOutlinedIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
+          {podeEscrever && (
+            <>
+              <Tooltip title="Editar">
+                <IconButton size="small" onClick={() => setDialogEquipamento(params.row.id)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={params.row.status === "Baixado" ? "Reativar" : "Dar baixa"}>
+                <IconButton
+                  size="small"
+                  onClick={() => statusMutation.mutate({ id: params.row.id, ativar: params.row.status === "Baixado" })}
+                >
+                  {params.row.status === "Baixado" ? (
+                    <CheckCircleOutlinedIcon fontSize="small" />
+                  ) : (
+                    <BlockOutlinedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </Stack>
       ),
     },
@@ -493,9 +691,11 @@ export default function EquipamentosPage() {
           {STATUS_OPCOES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
         <Box sx={{ flexGrow: 1 }} />
-        <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogEquipamento("novo")}>
-          Novo equipamento
-        </Button>
+        {podeEscrever && (
+          <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogEquipamento("novo")}>
+            Novo equipamento
+          </Button>
+        )}
       </Stack>
 
       {isError && <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>}
@@ -543,6 +743,10 @@ export default function EquipamentosPage() {
 
       {historicoDe && (
         <DialogHistorico equipamentoId={historicoDe} aberto onFechar={() => setHistoricoDe(null)} />
+      )}
+
+      {configuracoesDe && (
+        <DialogConfiguracoes equipamentoId={configuracoesDe} aberto onFechar={() => setConfiguracoesDe(null)} />
       )}
 
       <Snackbar

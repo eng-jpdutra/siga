@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
@@ -16,16 +16,14 @@ import Avatar from "@mui/material/Avatar";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import ComputerOutlinedIcon from "@mui/icons-material/ComputerOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
-import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
-import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import KeyOutlinedIcon from "@mui/icons-material/KeyOutlined";
+import HowToVoteOutlinedIcon from "@mui/icons-material/HowToVoteOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import { useAuth } from "../auth/AuthContext";
-import { useFotoPerfil } from "../hooks/useFotoPerfil";
 import { useThemeMode } from "../theme/ThemeModeProvider";
 
 const LARGURA_MENU = 240;
@@ -43,28 +41,19 @@ const itensDeNavegacao = [
   { rotulo: "Início", caminho: "/", icone: HomeOutlinedIcon },
   { rotulo: "Equipamentos", caminho: "/equipamentos", icone: ComputerOutlinedIcon },
   { rotulo: "Locais", caminho: "/locais", icone: PlaceOutlinedIcon },
-  { rotulo: "Responsáveis", caminho: "/responsaveis", icone: BadgeOutlinedIcon },
   { rotulo: "Notas fiscais", caminho: "/notas-fiscais", icone: ReceiptLongOutlinedIcon },
   { rotulo: "Licenças", caminho: "/licencas", icone: KeyOutlinedIcon },
-  // Todo mundo acessa — a própria tela decide o que mostrar (perfil próprio
-  // pra todos, gestão de outras contas só pra quem tem papel Administrador).
-  { rotulo: "Usuários", caminho: "/usuarios", icone: GroupOutlinedIcon },
+  { rotulo: "Vereadores", caminho: "/vereadores", icone: HowToVoteOutlinedIcon },
 ];
 
 // Layout base da aplicação: cabeçalho fixo + menu lateral fixo (sem colapsar).
 // As cores vêm sempre de `theme.palette` (nunca de hexadecimais soltos) —
-// ver identidade visual em src/theme/theme.js. Trocar senha/foto ficam
-// dentro da tela de Usuários ("Meu perfil"); sair fica no cabeçalho mesmo.
+// ver identidade visual em src/theme/theme.js. Perfil/senha/foto não são
+// mais daqui — moram só no Portal (login único do ecossistema); o SIGA só
+// mostra nome e papel de quem já chegou autenticado.
 export default function AppLayout() {
   const { usuario, sair } = useAuth();
-  const navigate = useNavigate();
-  const { data: fotoUrl } = useFotoPerfil();
   const { modo, alternarModo } = useThemeMode();
-
-  function handleSair() {
-    sair();
-    navigate("/login", { replace: true });
-  }
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
@@ -90,13 +79,9 @@ export default function AppLayout() {
               {usuario?.nome}
             </Typography>
 
-            <Tooltip title="Meu perfil">
-              <IconButton onClick={() => navigate("/usuarios")} sx={{ p: 0 }} aria-label="meu perfil">
-                <Avatar src={fotoUrl ?? undefined} sx={{ width: 48, height: 48, bgcolor: "secondary.main" }}>
-                  <AccountCircleOutlinedIcon sx={{ fontSize: 32 }} />
-                </Avatar>
-              </IconButton>
-            </Tooltip>
+            <Avatar sx={{ width: 48, height: 48, bgcolor: "secondary.main" }}>
+              <AccountCircleOutlinedIcon sx={{ fontSize: 32 }} />
+            </Avatar>
 
             <Tooltip title={modo === "dark" ? "Modo claro" : "Modo escuro"}>
               <IconButton color="inherit" onClick={alternarModo} aria-label="alternar tema claro/escuro">
@@ -105,7 +90,7 @@ export default function AppLayout() {
             </Tooltip>
 
             <Tooltip title="Sair">
-              <IconButton color="inherit" onClick={handleSair} aria-label="sair">
+              <IconButton color="inherit" onClick={sair} aria-label="sair">
                 <LogoutOutlinedIcon />
               </IconButton>
             </Tooltip>

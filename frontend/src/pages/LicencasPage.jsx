@@ -31,6 +31,7 @@ import { listarLicencas, criarLicenca, atualizarLicenca, removerLicenca } from "
 import { listarEquipamentos } from "../api/equipamentos";
 import { useDebounce } from "../hooks/useDebounce";
 import SeletorNotaFiscal from "../components/SeletorNotaFiscal";
+import { usePodeEscrever } from "../auth/AuthContext";
 
 const TIPOS_LICENCA = ["OEM", "Volume", "Retail"];
 
@@ -174,6 +175,7 @@ function CelulaChave({ valor }) {
 
 export default function LicencasPage() {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
 
   const [equipamentoFiltro, setEquipamentoFiltro] = useState(null);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
@@ -233,20 +235,21 @@ export default function LicencasPage() {
       headerName: "",
       sortable: false,
       width: 100,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Editar">
-            <IconButton size="small" onClick={() => setDialogLicenca(params.row)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remover">
-            <IconButton size="small" onClick={() => removerMutation.mutate(params.row.id)}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
+      renderCell: (params) =>
+        podeEscrever && (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Editar">
+              <IconButton size="small" onClick={() => setDialogLicenca(params.row)}>
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Remover">
+              <IconButton size="small" onClick={() => removerMutation.mutate(params.row.id)}>
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ),
     },
   ];
 
@@ -261,9 +264,11 @@ export default function LicencasPage() {
           <SeletorEquipamento value={equipamentoFiltro} onChange={setEquipamentoFiltro} />
         </Box>
         <Box sx={{ flexGrow: 1 }} />
-        <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogLicenca("novo")}>
-          Nova licença
-        </Button>
+        {podeEscrever && (
+          <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogLicenca("novo")}>
+            Nova licença
+          </Button>
+        )}
       </Stack>
 
       {isError && <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>}

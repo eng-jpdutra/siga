@@ -49,15 +49,6 @@ public static class DashboardEndpoints
             .Select(e => new AlertaGarantia(e.Id, DescricaoEquipamento(e), e.GarantiaAte!.Value))
             .ToList();
 
-        var equipamentosSemResponsavel = await db.Equipamentos.AsNoTracking()
-            .Where(e => e.Status == StatusEquipamento.Ativo && e.ResponsavelId == null)
-            .OrderByDescending(e => e.Id)
-            .ToListAsync();
-        var semResponsavel = equipamentosSemResponsavel
-            .Take(LimiteItensPorLista)
-            .Select(e => new EquipamentoSemResponsavel(e.Id, DescricaoEquipamento(e)))
-            .ToList();
-
         var atividades = await db.Historicos.AsNoTracking()
             .Include(h => h.Equipamento)
             .OrderByDescending(h => h.RegistradoEm)
@@ -74,8 +65,6 @@ public static class DashboardEndpoints
             porTipo,
             equipamentosGarantia.Count,
             garantiasVencendo,
-            equipamentosSemResponsavel.Count,
-            semResponsavel,
             atividadeRecente));
     }
 

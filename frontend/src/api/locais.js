@@ -10,6 +10,10 @@ export function listarLocais({ nome, page, pageSize }) {
   return apiFetch(`/api/locais?${params.toString()}`);
 }
 
+// Texto livre — não é uma lista fechada validada pelo backend, só ajuda a
+// organizar (ex.: "Gabinete", "Almoxarifado", "Plenário", "Setor").
+export const TIPOS_DE_LOCAL_SUGERIDOS = ["Gabinete", "Almoxarifado", "Plenário", "Setor"];
+
 export function criarLocal(dados) {
   return apiFetch("/api/locais", {
     method: "POST",

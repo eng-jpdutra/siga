@@ -11,52 +11,21 @@ public enum StatusEquipamento
     Baixado,
 }
 
-public enum StatusResponsavel
-{
-    Ativo,
-    Inativo,
-}
-
+// Lista fechada só dos campos COMUNS (ver Equipamento.cs); os campos
+// específicos de cada tipo ficam em `Detalhes` e o mapa "tipo -> campos"
+// mora no frontend (EquipamentosPage.jsx) — ver CLAUDE.md. Adicionar um
+// tipo novo é só acrescentar aqui e no mapa do frontend, sem migration.
 public enum TipoEquipamento
 {
     Computador,
     Impressora,
+    Monitor,
     DispositivoRede,
+    Nobreak,
+    Camera,
+    DvrNvr,
+    TelefoneIp,
     Outro,
-}
-
-public enum SubtipoComputador
-{
-    Desktop,
-    Notebook,
-}
-
-public enum TipoArmazenamento
-{
-    HDD,
-    SSD,
-    NVMe,
-}
-
-public enum TipoImpressao
-{
-    Laser,
-    JatoDeTinta,
-    Matricial,
-}
-
-public enum ConexaoImpressora
-{
-    USB,
-    Rede,
-}
-
-public enum SubtipoDispositivoRede
-{
-    Switch,
-    Roteador,
-    AccessPoint,
-    Firewall,
 }
 
 // Tipo de lançamento no diário do equipamento (ver regra "historico" no CLAUDE.md).
@@ -65,7 +34,7 @@ public enum TipoHistorico
     Manutencao,
     Formatacao,
     MudancaLocal,
-    TrocaResponsavel,
+    TrocaResponsavel, // não usado mais (ver CLAUDE.md) — mantido só p/ ler históricos antigos.
     Outro,
 }
 

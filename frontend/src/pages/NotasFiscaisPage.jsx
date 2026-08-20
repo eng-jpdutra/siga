@@ -32,6 +32,7 @@ import {
   removerNotaFiscal,
   baixarArquivoNotaFiscal,
 } from "../api/notasFiscais";
+import { usePodeEscrever } from "../auth/AuthContext";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
@@ -118,6 +119,7 @@ function DialogNotaFiscal({ aberto, onFechar, onSalvar, salvando, erro, notaEdit
 
 export default function NotasFiscaisPage() {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
 
   const [numero, setNumero] = useState("");
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
@@ -200,16 +202,20 @@ export default function NotasFiscaisPage() {
               </IconButton>
             </Tooltip>
           )}
-          <Tooltip title="Editar">
-            <IconButton size="small" onClick={() => setDialogNota(params.row)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remover">
-            <IconButton size="small" onClick={() => removerMutation.mutate(params.row.id)}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {podeEscrever && (
+            <>
+              <Tooltip title="Editar">
+                <IconButton size="small" onClick={() => setDialogNota(params.row)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Remover">
+                <IconButton size="small" onClick={() => removerMutation.mutate(params.row.id)}>
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </Stack>
       ),
     },
@@ -230,9 +236,11 @@ export default function NotasFiscaisPage() {
           sx={{ minWidth: 280 }}
         />
         <Box sx={{ flexGrow: 1 }} />
-        <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogNota("novo")}>
-          Nova nota fiscal
-        </Button>
+        {podeEscrever && (
+          <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setDialogNota("novo")}>
+            Nova nota fiscal
+          </Button>
+        )}
       </Stack>
 
       {isError && <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>}

@@ -8,7 +8,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import EventBusyOutlinedIcon from "@mui/icons-material/EventBusyOutlined";
-import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import { obterDashboard } from "../api/dashboard";
 
 const RESUMO_TIPO = { Computador: "Computadores", Impressora: "Impressoras", DispositivoRede: "Disp. de rede", Outro: "Outros" };
@@ -78,7 +77,6 @@ export default function HomePage() {
       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
         <CartaoContador icone={Inventory2OutlinedIcon} titulo="Equipamentos cadastrados" valor={data.totalEquipamentos} />
         <CartaoContador icone={EventBusyOutlinedIcon} titulo="Garantias vencendo/vencidas" valor={data.totalGarantiasVencendo} corIcone="secondary.main" />
-        <CartaoContador icone={PersonOffOutlinedIcon} titulo="Sem responsável" valor={data.totalSemResponsavel} corIcone="secondary.main" />
       </Stack>
 
       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
@@ -116,16 +114,6 @@ export default function HomePage() {
                 {formatoData.format(new Date(`${item.garantiaAte}T00:00:00Z`))}
               </Typography>
             </Stack>
-          )}
-        />
-
-        <PainelLista
-          titulo="Equipamentos sem responsável"
-          total={data.totalSemResponsavel}
-          itens={data.semResponsavel}
-          itemVazio="Todos os equipamentos ativos têm responsável."
-          renderItem={(item) => (
-            <Typography key={item.equipamentoId} variant="body2">{item.descricao}</Typography>
           )}
         />
       </Stack>

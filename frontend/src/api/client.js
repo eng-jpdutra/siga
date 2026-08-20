@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_URL;
+const URL_PORTAL = import.meta.env.VITE_PORTAL_URL;
 const CHAVE_TOKEN = "siga_token";
 
 export function salvarToken(token) {
@@ -16,7 +17,7 @@ export function obterToken() {
 // Wrapper fino sobre fetch: monta a URL a partir do VITE_API_URL, anexa o
 // token (se tiver um salvo), já manda/lê JSON e transforma respostas de
 // erro (400/404/409) em exceções com a mensagem que a API devolveu.
-export async function apiFetch(path, { skipAuthRedirect = false, ...options } = {}) {
+export async function apiFetch(path, options = {}) {
   const token = obterToken();
 
   // Upload de arquivo manda FormData — nesse caso o navegador precisa
@@ -34,15 +35,11 @@ export async function apiFetch(path, { skipAuthRedirect = false, ...options } = 
     },
   });
 
-  // skipAuthRedirect: o próprio /api/auth/login também responde 401 quando a
-  // senha está errada — isso não é "sessão expirada", é erro de formulário.
-  if (response.status === 401 && !skipAuthRedirect) {
-    // Token ausente/expirado/inválido: não tem como recuperar a sessão,
-    // então já limpa e manda pro login em vez de deixar a tela travada.
-    limparToken();
-    if (window.location.pathname !== "/login") {
-      window.location.href = "/login";
-    }
+  // Token ausente/expirado/inválido: o SIGA não tem login próprio, então
+  // não tem pra onde mandar a pessoa a não ser de volta pro Portal.
+  if (response.status === 401) {
+    localStorage.removeItem(CHAVE_TOKEN);
+    window.location.href = URL_PORTAL;
     throw new Error("Sessão expirada. Faça login novamente.");
   }
 

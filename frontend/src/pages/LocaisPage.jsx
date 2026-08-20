@@ -22,11 +22,13 @@ import Alert from "@mui/material/Alert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import AddIcon from "@mui/icons-material/Add";
-import { listarLocais, criarLocal, atualizarLocal, removerLocal } from "../api/locais";
+import Autocomplete from "@mui/material/Autocomplete";
+import { listarLocais, criarLocal, atualizarLocal, removerLocal, TIPOS_DE_LOCAL_SUGERIDOS } from "../api/locais";
+import { usePodeEscrever } from "../auth/AuthContext";
 
 // Barra de filtro fica fora do DataGrid: filtragem é sempre feita no
 // servidor (page/pageSize/nome viram query string), nunca no cliente.
-function BarraDeFiltro({ nome, onNomeChange, onNovoLocal }) {
+function BarraDeFiltro({ nome, onNomeChange, onNovoLocal, podeEscrever }) {
   return (
     <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: "center" }}>
       <TextField
@@ -37,9 +39,11 @@ function BarraDeFiltro({ nome, onNomeChange, onNovoLocal }) {
         sx={{ minWidth: 280 }}
       />
       <Box sx={{ flexGrow: 1 }} />
-      <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={onNovoLocal}>
-        Novo local
-      </Button>
+      {podeEscrever && (
+        <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={onNovoLocal}>
+          Novo local
+        </Button>
+      )}
     </Stack>
   );
 }
@@ -49,11 +53,13 @@ function DialogLocal({ aberto, onFechar, onSalvar, salvando, erro, localEditando
 
   const [nome, setNome] = useState(localEditando?.nome ?? "");
   const [descricao, setDescricao] = useState(localEditando?.descricao ?? "");
+  const [tipo, setTipo] = useState(localEditando?.tipo ?? "");
 
   const handleSalvar = () => {
-    onSalvar({ nome, descricao: descricao || null }, () => {
+    onSalvar({ nome, descricao: descricao || null, tipo: tipo || null }, () => {
       setNome("");
       setDescricao("");
+      setTipo("");
     });
   };
 
@@ -69,6 +75,13 @@ function DialogLocal({ aberto, onFechar, onSalvar, salvando, erro, localEditando
             onChange={(e) => setNome(e.target.value)}
             autoFocus
             required
+          />
+          <Autocomplete
+            freeSolo
+            options={TIPOS_DE_LOCAL_SUGERIDOS}
+            value={tipo}
+            onInputChange={(_, valor) => setTipo(valor)}
+            renderInput={(params) => <TextField {...params} label="Tipo" placeholder="Gabinete, Almoxarifado..." />}
           />
           <TextField
             label="Descrição"
@@ -91,6 +104,7 @@ function DialogLocal({ aberto, onFechar, onSalvar, salvando, erro, localEditando
 
 export default function LocaisPage() {
   const queryClient = useQueryClient();
+  const podeEscrever = usePodeEscrever();
 
   const [nome, setNome] = useState("");
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
@@ -135,30 +149,32 @@ export default function LocaisPage() {
 
   const colunas = [
     { field: "nome", headerName: "Nome", flex: 1 },
+    { field: "tipo", headerName: "Tipo", flex: 1 },
     { field: "descricao", headerName: "Descrição", flex: 2 },
     {
       field: "acoes",
       headerName: "",
       sortable: false,
       width: 100,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Editar">
-            <IconButton size="small" aria-label="editar" onClick={() => setDialogLocal(params.row)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remover">
-            <IconButton
-              size="small"
-              aria-label="remover"
-              onClick={() => removerMutation.mutate(params.row.id)}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
+      renderCell: (params) =>
+        podeEscrever && (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Editar">
+              <IconButton size="small" aria-label="editar" onClick={() => setDialogLocal(params.row)}>
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Remover">
+              <IconButton
+                size="small"
+                aria-label="remover"
+                onClick={() => removerMutation.mutate(params.row.id)}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ),
     },
   ];
 
@@ -168,7 +184,12 @@ export default function LocaisPage() {
         Locais
       </Typography>
 
-      <BarraDeFiltro nome={nome} onNomeChange={setNome} onNovoLocal={() => setDialogLocal("novo")} />
+      <BarraDeFiltro
+        nome={nome}
+        onNomeChange={setNome}
+        onNovoLocal={() => setDialogLocal("novo")}
+        podeEscrever={podeEscrever}
+      />
 
       {isError && <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>}
 

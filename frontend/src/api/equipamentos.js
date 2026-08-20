@@ -1,6 +1,6 @@
 import { apiFetch } from "./client";
 
-export function listarEquipamentos({ termo, tipo, status, localId, responsavelId, page, pageSize }) {
+export function listarEquipamentos({ termo, tipo, status, localId, page, pageSize }) {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
@@ -9,7 +9,6 @@ export function listarEquipamentos({ termo, tipo, status, localId, responsavelId
   if (tipo) params.set("tipo", tipo);
   if (status) params.set("status", status);
   if (localId) params.set("localId", String(localId));
-  if (responsavelId) params.set("responsavelId", String(responsavelId));
 
   return apiFetch(`/api/equipamentos?${params.toString()}`);
 }
